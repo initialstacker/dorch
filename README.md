@@ -49,24 +49,6 @@ $entityManager = app(EntityManagerInterface::class);
 // Use $entityManager to persist, find, and query entities
 ```
 
-## Testing
-
-This package includes PHPUnit tests. Run tests with:
-
-```
-./vendor/bin/phpunit
-```
-
-## Requirements
-
-- PHP ^8.1
-- Laravel ^10.0
-- doctrine/orm ^2.14
-- doctrine/dbal ^3.4
-- symfony/cache ^6.3
-- ramsey/uuid ^4.9 (optional)
-- phpunit/phpunit ^10.0 (for development)
-
 ## License
 
 This package is open-sourced software licensed under the MIT license.
