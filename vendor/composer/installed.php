@@ -524,9 +524,9 @@
             'dev_requirement' => true,
         ),
         'symfony/cache' => array(
-            'pretty_version' => 'v6.4.24',
-            'version' => '6.4.24.0',
-            'reference' => 'd038cd3054aeaf1c674022a77048b2ef6376a175',
+            'pretty_version' => 'v7.3.2',
+            'version' => '7.3.2.0',
+            'reference' => '6621a2bee5373e3e972b2ae5dbedd5ac899d8cb6',
             'type' => 'library',
             'install_path' => __DIR__ . '/../symfony/cache',
             'aliases' => array(),
