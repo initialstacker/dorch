@@ -28,9 +28,7 @@
   "extra": {
     "laravel": {
       "providers": [
-        "Initialstacker\\Dorch\\ServiceProvider",
-        "Initialstacker\\Dorch\\DoctrineConnector"
-      ]
+        "Initialstacker\\Dorch\\ServiceProvider"      ]
     }
   },
   "minimum-stability": "stable",
