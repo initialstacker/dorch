@@ -22,22 +22,30 @@ final class DoctrineConnector extends ServiceProvider
         $this->app->singleton(
             abstract: EntityManagerInterface::class,
             concrete: function (Application $app): EntityManager {
-                $redis = RedisAdapter::createConnection(
-                    dsn: config(key: 'doctrine.redis_url'),
-                    options: config(key: 'doctrine.redis_ssl_options', default: [])
-                );
+                try {
+                    $redis = RedisAdapter::createConnection(
+                        dsn: config(key: 'doctrine.redis_url'),
+                        options: config(key: 'doctrine.redis_ssl_options')
+                    );
+                    
+                    $cache = new RedisAdapter(redis: $redis);
+                }
+
+                catch (\Exception $e) {
+                    $cache = null;
+                }
 
                 $proxyDir = storage_path(path: 'doctrine/proxies');
 
                 if (!is_dir(filename: $proxyDir)) {
                     mkdir(directory: $proxyDir, permissions: 0775, recursive: true);
                 }
-                
+
                 $config = ORMSetup::createAttributeMetadataConfiguration(
                     paths: config(key: 'doctrine.metadata_dirs'),
                     isDevMode: config(key: 'doctrine.dev_mode'),
                     proxyDir: $proxyDir,
-                    cache: new RedisAdapter(redis: $redis)
+                    cache: $cache
                 );
 
                 $config->setAutoGenerateProxyClasses(
@@ -48,7 +56,7 @@ final class DoctrineConnector extends ServiceProvider
                     params: config(key: 'doctrine.connection'),
                     config: $config
                 );
-                
+
                 foreach (config(key: 'doctrine.custom_types') as $name => $type) {
                     if (!Type::hasType(name: $name)) {
                         Type::addType(name: $name, type: $type);
