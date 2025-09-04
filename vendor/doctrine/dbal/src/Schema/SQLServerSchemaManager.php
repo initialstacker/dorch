@@ -50,18 +50,9 @@ class SQLServerSchemaManager extends AbstractSchemaManager
 
     /**
      * {@inheritDoc}
-     *
-     * @deprecated Use {@see introspectTable()} instead.
      */
     public function listTableDetails($name)
     {
-        Deprecation::triggerIfCalledFromOutside(
-            'doctrine/dbal',
-            'https://github.com/doctrine/dbal/pull/5595',
-            '%s is deprecated. Use introspectTable() instead.',
-            __METHOD__,
-        );
-
         return $this->doListTableDetails($name);
     }
 
@@ -104,7 +95,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableSequenceDefinition($sequence)
     {
@@ -112,7 +103,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableColumnDefinition($tableColumn)
     {
@@ -133,16 +124,8 @@ SQL,
 
         switch ($dbType) {
             case 'nchar':
-            case 'ntext':
-                // Unicode data requires 2 bytes per character
-                $length /= 2;
-                break;
-
             case 'nvarchar':
-                if ($length === -1) {
-                    break;
-                }
-
+            case 'ntext':
                 // Unicode data requires 2 bytes per character
                 $length /= 2;
                 break;
@@ -197,7 +180,7 @@ SQL,
 
     private function parseDefaultExpression(string $value): ?string
     {
-        while (preg_match('/^\((.*)\)$/s', $value, $matches) === 1) {
+        while (preg_match('/^\((.*)\)$/s', $value, $matches)) {
             $value = $matches[1];
         }
 
@@ -217,7 +200,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableForeignKeysList($tableForeignKeys)
     {
@@ -227,15 +210,9 @@ SQL,
             $name = $tableForeignKey['ForeignKey'];
 
             if (! isset($foreignKeys[$name])) {
-                $referencedTableName = $tableForeignKey['ReferenceTableName'];
-
-                if ($tableForeignKey['ReferenceSchemaName'] !== 'dbo') {
-                    $referencedTableName = $tableForeignKey['ReferenceSchemaName'] . '.' . $referencedTableName;
-                }
-
                 $foreignKeys[$name] = [
                     'local_columns' => [$tableForeignKey['ColumnName']],
-                    'foreign_table' => $referencedTableName,
+                    'foreign_table' => $tableForeignKey['ReferenceTableName'],
                     'foreign_columns' => [$tableForeignKey['ReferenceColumnName']],
                     'name' => $name,
                     'options' => [
@@ -253,7 +230,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableIndexesList($tableIndexes, $tableName = null)
     {
@@ -267,7 +244,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableForeignKeyDefinition($tableForeignKey)
     {
@@ -281,7 +258,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableDefinition($table)
     {
@@ -293,7 +270,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableDatabaseDefinition($database)
     {
@@ -301,7 +278,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      *
      * @deprecated Use {@see listSchemaNames()} instead.
      */
@@ -318,7 +295,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableViewDefinition($view)
     {
@@ -327,21 +304,17 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function alterTable(TableDiff $tableDiff)
     {
-        $droppedColumns = $tableDiff->getDroppedColumns();
-
-        if (count($droppedColumns) > 0) {
-            $tableName = ($tableDiff->getOldTable() ?? $tableDiff->getName($this->_platform))->getName();
-
-            foreach ($droppedColumns as $col) {
-                foreach ($this->getColumnConstraints($tableName, $col->getName()) as $constraint) {
+        if (count($tableDiff->removedColumns) > 0) {
+            foreach ($tableDiff->removedColumns as $col) {
+                foreach ($this->getColumnConstraints($tableDiff->name, $col->getName()) as $constraint) {
                     $this->_conn->executeStatement(
                         sprintf(
                             'ALTER TABLE %s DROP CONSTRAINT %s',
-                            $tableName,
+                            $tableDiff->name,
                             $constraint,
                         ),
                     );
@@ -417,7 +390,7 @@ WHERE type = 'U'
 ORDER BY name
 SQL;
 
-        return $this->_conn->executeQuery($sql);
+        return $this->_conn->executeQuery($sql, [$databaseName]);
     }
 
     protected function selectTableColumns(string $databaseName, ?string $tableName = null): Result
@@ -562,29 +535,31 @@ SQL;
     {
         $sql = <<<'SQL'
           SELECT
-            scm.name AS schema_name,
-            tbl.name AS table_name,
+            tbl.name,
             p.value AS [table_comment]
           FROM
             sys.tables AS tbl
-            JOIN sys.schemas AS scm
-              ON tbl.schema_id = scm.schema_id
             INNER JOIN sys.extended_properties AS p ON p.major_id=tbl.object_id AND p.minor_id=0 AND p.class=1
 SQL;
 
-        $conditions = ["p.name = N'MS_Description'"];
+        $conditions = ["SCHEMA_NAME(tbl.schema_id) = N'dbo'", "p.name = N'MS_Description'"];
+        $params     = [];
 
         if ($tableName !== null) {
-            $conditions[] = $this->getTableWhereClause($tableName, 'scm.name', 'tbl.name');
+            $conditions[] = "tbl.name = N'" . $tableName . "'";
         }
 
         $sql .= ' WHERE ' . implode(' AND ', $conditions);
 
+        /** @var array<string,array<string,mixed>> $metadata */
+        $metadata = $this->_conn->executeQuery($sql, $params)
+            ->fetchAllAssociativeIndexed();
+
         $tableOptions = [];
-        foreach ($this->_conn->iterateAssociative($sql) as $data) {
+        foreach ($metadata as $table => $data) {
             $data = array_change_key_case($data, CASE_LOWER);
 
-            $tableOptions[$this->_getPortableTableDefinition($data)] = [
+            $tableOptions[$table] = [
                 'comment' => $data['table_comment'],
             ];
         }

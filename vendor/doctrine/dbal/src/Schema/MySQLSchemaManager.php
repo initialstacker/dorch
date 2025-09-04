@@ -9,7 +9,6 @@ use Doctrine\DBAL\Platforms\MySQL\CollationMetadataProvider\CachingCollationMeta
 use Doctrine\DBAL\Platforms\MySQL\CollationMetadataProvider\ConnectionCollationMetadataProvider;
 use Doctrine\DBAL\Result;
 use Doctrine\DBAL\Types\Type;
-use Doctrine\Deprecations\Deprecation;
 
 use function array_change_key_case;
 use function array_shift;
@@ -68,18 +67,9 @@ class MySQLSchemaManager extends AbstractSchemaManager
 
     /**
      * {@inheritDoc}
-     *
-     * @deprecated Use {@see introspectTable()} instead.
      */
     public function listTableDetails($name)
     {
-        Deprecation::triggerIfCalledFromOutside(
-            'doctrine/dbal',
-            'https://github.com/doctrine/dbal/pull/5595',
-            '%s is deprecated. Use introspectTable() instead.',
-            __METHOD__,
-        );
-
         return $this->doListTableDetails($name);
     }
 
@@ -108,7 +98,7 @@ class MySQLSchemaManager extends AbstractSchemaManager
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableViewDefinition($view)
     {
@@ -116,7 +106,7 @@ class MySQLSchemaManager extends AbstractSchemaManager
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableDefinition($table)
     {
@@ -124,7 +114,7 @@ class MySQLSchemaManager extends AbstractSchemaManager
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableIndexesList($tableIndexes, $tableName = null)
     {
@@ -154,7 +144,7 @@ class MySQLSchemaManager extends AbstractSchemaManager
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableDatabaseDefinition($database)
     {
@@ -162,7 +152,7 @@ class MySQLSchemaManager extends AbstractSchemaManager
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableColumnDefinition($tableColumn)
     {
@@ -183,7 +173,7 @@ class MySQLSchemaManager extends AbstractSchemaManager
         $scale     = null;
         $precision = null;
 
-        $type = $origType = $this->_platform->getDoctrineTypeMapping($dbType);
+        $type = $this->_platform->getDoctrineTypeMapping($dbType);
 
         // In cases where not connected to a database DESCRIBE $table does not return 'Comment'
         if (isset($tableColumn['comment'])) {
@@ -286,39 +276,7 @@ class MySQLSchemaManager extends AbstractSchemaManager
             $column->setPlatformOption('collation', $tableColumn['collation']);
         }
 
-        if (isset($tableColumn['declarationMismatch'])) {
-            $column->setPlatformOption('declarationMismatch', $tableColumn['declarationMismatch']);
-        }
-
-        // Check underlying database type where doctrine type is inferred from DC2Type comment
-        // and set a flag if it is not as expected.
-        if ($type === 'json' && $origType !== $type && $this->expectedDbType($type, $options) !== $dbType) {
-            $column->setPlatformOption('declarationMismatch', true);
-        }
-
         return $column;
-    }
-
-    /**
-     * Returns the database data type for a given doctrine type and column
-     *
-     * Note that for data types that depend on length where length is not part of the column definition
-     * and therefore the $tableColumn['length'] will not be set, for example TEXT (which could be LONGTEXT,
-     * MEDIUMTEXT) or BLOB (LONGBLOB or TINYBLOB), the expectedDbType cannot be inferred exactly, merely
-     * the default type.
-     *
-     * This method is intended to be used to determine underlying database type where doctrine type is
-     * inferred from a DC2Type comment.
-     *
-     * @param mixed[] $tableColumn
-     */
-    private function expectedDbType(string $type, array $tableColumn): string
-    {
-        $_type          = Type::getType($type);
-        $expectedDbType = strtolower($_type->getSQLDeclaration($tableColumn, $this->_platform));
-        $expectedDbType = strtok($expectedDbType, '(), ');
-
-        return $expectedDbType === false ? '' : $expectedDbType;
     }
 
     /**
@@ -362,7 +320,7 @@ class MySQLSchemaManager extends AbstractSchemaManager
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableForeignKeysList($tableForeignKeys)
     {
@@ -437,18 +395,15 @@ SQL;
 
     protected function selectTableColumns(string $databaseName, ?string $tableName = null): Result
     {
-        // @todo 4.0 - call getColumnTypeSQLSnippet() instead
-        [$columnTypeSQL, $joinCheckConstraintSQL] = $this->_platform->getColumnTypeSQLSnippets('c', $databaseName);
-
         $sql = 'SELECT';
 
         if ($tableName === null) {
             $sql .= ' c.TABLE_NAME,';
         }
 
-        $sql .= <<<SQL
+        $sql .= <<<'SQL'
        c.COLUMN_NAME        AS field,
-       $columnTypeSQL       AS type,
+       c.COLUMN_TYPE        AS type,
        c.IS_NULLABLE        AS `null`,
        c.COLUMN_KEY         AS `key`,
        c.COLUMN_DEFAULT     AS `default`,
@@ -459,7 +414,6 @@ SQL;
 FROM information_schema.COLUMNS c
     INNER JOIN information_schema.TABLES t
         ON t.TABLE_NAME = c.TABLE_NAME
-    $joinCheckConstraintSQL
 SQL;
 
         // The schema name is passed multiple times as a literal in the WHERE clause instead of using a JOIN condition
@@ -557,12 +511,30 @@ SQL;
      */
     protected function fetchTableOptionsByTable(string $databaseName, ?string $tableName = null): array
     {
-        $sql = $this->_platform->fetchTableOptionsByTable($tableName !== null);
+        $sql = <<<'SQL'
+    SELECT t.TABLE_NAME,
+           t.ENGINE,
+           t.AUTO_INCREMENT,
+           t.TABLE_COMMENT,
+           t.CREATE_OPTIONS,
+           t.TABLE_COLLATION,
+           ccsa.CHARACTER_SET_NAME
+      FROM information_schema.TABLES t
+        INNER JOIN information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ccsa
+            ON ccsa.COLLATION_NAME = t.TABLE_COLLATION
+SQL;
 
-        $params = [$databaseName];
+        $conditions = ['t.TABLE_SCHEMA = ?'];
+        $params     = [$databaseName];
+
         if ($tableName !== null) {
-            $params[] = $tableName;
+            $conditions[] = 't.TABLE_NAME = ?';
+            $params[]     = $tableName;
         }
+
+        $conditions[] = "t.TABLE_TYPE = 'BASE TABLE'";
+
+        $sql .= ' WHERE ' . implode(' AND ', $conditions);
 
         /** @var array<string,array<string,mixed>> $metadata */
         $metadata = $this->_conn->executeQuery($sql, $params)

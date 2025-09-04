@@ -2,11 +2,13 @@
 
 namespace Doctrine\DBAL\Driver\PDO;
 
+use Doctrine\DBAL\Driver\Exception as ExceptionInterface;
 use Doctrine\DBAL\Driver\Exception\UnknownParameterType;
 use Doctrine\DBAL\Driver\Result as ResultInterface;
 use Doctrine\DBAL\Driver\Statement as StatementInterface;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\Deprecations\Deprecation;
+use PDO;
 use PDOException;
 use PDOStatement;
 
@@ -16,6 +18,16 @@ use function func_num_args;
 
 final class Statement implements StatementInterface
 {
+    private const PARAM_TYPE_MAP = [
+        ParameterType::NULL => PDO::PARAM_NULL,
+        ParameterType::INTEGER => PDO::PARAM_INT,
+        ParameterType::STRING => PDO::PARAM_STR,
+        ParameterType::ASCII => PDO::PARAM_STR,
+        ParameterType::BINARY => PDO::PARAM_LOB,
+        ParameterType::LARGE_OBJECT => PDO::PARAM_LOB,
+        ParameterType::BOOLEAN => PDO::PARAM_BOOL,
+    ];
+
     private PDOStatement $stmt;
 
     /** @internal The statement can be only instantiated by its driver connection. */
@@ -25,11 +37,7 @@ final class Statement implements StatementInterface
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * @throws UnknownParameterType
-     *
-     * @phpstan-assert ParameterType::* $type
+     * {@inheritdoc}
      */
     public function bindValue($param, $value, $type = ParameterType::STRING)
     {
@@ -42,10 +50,10 @@ final class Statement implements StatementInterface
             );
         }
 
-        $pdoType = ParameterTypeMap::convertParamType($type);
+        $type = $this->convertParamType($type);
 
         try {
-            return $this->stmt->bindValue($param, $value, $pdoType);
+            return $this->stmt->bindValue($param, $value, $type);
         } catch (PDOException $exception) {
             throw Exception::new($exception);
         }
@@ -61,10 +69,6 @@ final class Statement implements StatementInterface
      * @param int      $type
      * @param int|null $length
      * @param mixed    $driverOptions The usage of the argument is deprecated.
-     *
-     * @throws UnknownParameterType
-     *
-     * @phpstan-assert ParameterType::* $type
      */
     public function bindParam(
         $param,
@@ -97,13 +101,13 @@ final class Statement implements StatementInterface
             );
         }
 
-        $pdoType = ParameterTypeMap::convertParamType($type);
+        $type = $this->convertParamType($type);
 
         try {
             return $this->stmt->bindParam(
                 $param,
                 $variable,
-                $pdoType,
+                $type,
                 $length ?? 0,
                 ...array_slice(func_get_args(), 4),
             );
@@ -113,7 +117,7 @@ final class Statement implements StatementInterface
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function execute($params = null): ResultInterface
     {
@@ -133,5 +137,21 @@ final class Statement implements StatementInterface
         }
 
         return new Result($this->stmt);
+    }
+
+    /**
+     * Converts DBAL parameter type to PDO parameter type
+     *
+     * @param int $type Parameter type
+     *
+     * @throws ExceptionInterface
+     */
+    private function convertParamType(int $type): int
+    {
+        if (! isset(self::PARAM_TYPE_MAP[$type])) {
+            throw UnknownParameterType::new($type);
+        }
+
+        return self::PARAM_TYPE_MAP[$type];
     }
 }

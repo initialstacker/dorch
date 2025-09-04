@@ -9,8 +9,6 @@ use Doctrine\DBAL\Exception;
 
 /**
  * Session init listener for executing a single SQL statement right after a connection is opened.
- *
- * @deprecated Implement a middleware instead.
  */
 class SQLSessionInit implements EventSubscriber
 {
@@ -34,7 +32,7 @@ class SQLSessionInit implements EventSubscriber
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function getSubscribedEvents()
     {

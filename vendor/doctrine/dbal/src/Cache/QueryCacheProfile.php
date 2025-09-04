@@ -8,10 +8,8 @@ use Doctrine\Common\Cache\Psr6\DoctrineProvider;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\Deprecations\Deprecation;
 use Psr\Cache\CacheItemPoolInterface;
-use RuntimeException;
 use TypeError;
 
-use function class_exists;
 use function get_class;
 use function hash;
 use function serialize;
@@ -84,19 +82,7 @@ class QueryCacheProfile
             __METHOD__,
         );
 
-        if ($this->resultCache === null) {
-            return null;
-        }
-
-        if (! class_exists(DoctrineProvider::class)) {
-            throw new RuntimeException(sprintf(
-                'Calling %s() is not supported if the doctrine/cache package is not installed. '
-                    . 'Try running "composer require doctrine/cache" or migrate cache access to PSR-6.',
-                __METHOD__,
-            ));
-        }
-
-        return DoctrineProvider::wrap($this->resultCache);
+        return $this->resultCache !== null ? DoctrineProvider::wrap($this->resultCache) : null;
     }
 
     /** @return int */
@@ -127,7 +113,7 @@ class QueryCacheProfile
      * @param array<int, Type|int|string|null>|array<string, Type|int|string|null> $types
      * @param array<string, mixed>                                                 $connectionParams
      *
-     * @return array{string, string}
+     * @return string[]
      */
     public function generateCacheKeys($sql, $params, $types, array $connectionParams = [])
     {
@@ -141,7 +127,11 @@ class QueryCacheProfile
             '&connectionParams=' . hash('sha256', serialize($connectionParams));
 
         // should the key be automatically generated using the inputs or is the cache key set?
-        $cacheKey = $this->cacheKey ?? sha1($realCacheKey);
+        if ($this->cacheKey === null) {
+            $cacheKey = sha1($realCacheKey);
+        } else {
+            $cacheKey = $this->cacheKey;
+        }
 
         return [$cacheKey, $realCacheKey];
     }

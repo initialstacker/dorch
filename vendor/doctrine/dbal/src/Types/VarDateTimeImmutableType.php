@@ -5,7 +5,8 @@ namespace Doctrine\DBAL\Types;
 use DateTimeImmutable;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\Deprecations\Deprecation;
-use Exception;
+
+use function date_create_immutable;
 
 /**
  * Immutable type of {@see VarDateTimeType}.
@@ -13,7 +14,7 @@ use Exception;
 class VarDateTimeImmutableType extends VarDateTimeType
 {
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function getName()
     {
@@ -21,13 +22,7 @@ class VarDateTimeImmutableType extends VarDateTimeType
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * @param T $value
-     *
-     * @return (T is null ? null : string)
-     *
-     * @template T
+     * {@inheritdoc}
      */
     public function convertToDatabaseValue($value, AbstractPlatform $platform)
     {
@@ -47,13 +42,7 @@ class VarDateTimeImmutableType extends VarDateTimeType
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * @param T $value
-     *
-     * @return (T is null ? null : DateTimeImmutable)
-     *
-     * @template T
+     * {@inheritdoc}
      */
     public function convertToPHPValue($value, AbstractPlatform $platform)
     {
@@ -61,17 +50,17 @@ class VarDateTimeImmutableType extends VarDateTimeType
             return $value;
         }
 
-        try {
-            $dateTime = new DateTimeImmutable($value);
-        } catch (Exception $e) {
-            throw ConversionException::conversionFailed($value, $this->getName(), $e);
+        $dateTime = date_create_immutable($value);
+
+        if ($dateTime === false) {
+            throw ConversionException::conversionFailed($value, $this->getName());
         }
 
         return $dateTime;
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      *
      * @deprecated
      */

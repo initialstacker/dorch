@@ -58,18 +58,9 @@ class PostgreSQLSchemaManager extends AbstractSchemaManager
 
     /**
      * {@inheritDoc}
-     *
-     * @deprecated Use {@see introspectTable()} instead.
      */
     public function listTableDetails($name)
     {
-        Deprecation::triggerIfCalledFromOutside(
-            'doctrine/dbal',
-            'https://github.com/doctrine/dbal/pull/5595',
-            '%s is deprecated. Use introspectTable() instead.',
-            __METHOD__,
-        );
-
         return $this->doListTableDetails($name);
     }
 
@@ -218,7 +209,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableForeignKeyDefinition($tableForeignKey)
     {
@@ -264,7 +255,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableViewDefinition($view)
     {
@@ -272,7 +263,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableDefinition($table)
     {
@@ -286,7 +277,9 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
+     *
+     * @link http://ezcomponents.org/docs/api/trunk/DatabaseSchema/ezcDbSchemaPgsqlReader.html
      */
     protected function _getPortableTableIndexesList($tableIndexes, $tableName = null)
     {
@@ -294,16 +287,9 @@ SQL,
         foreach ($tableIndexes as $row) {
             $colNumbers    = array_map('intval', explode(' ', $row['indkey']));
             $columnNameSql = sprintf(
-                <<<'SQL'
-                SELECT attnum,
-                       quote_ident(attname) AS attname
-                FROM pg_attribute
-                WHERE attrelid = %d
-                  AND attnum IN (%s)
-                ORDER BY attnum
-                SQL,
+                'SELECT attnum, attname FROM pg_attribute WHERE attrelid=%d AND attnum IN (%s) ORDER BY attnum ASC',
                 $row['indrelid'],
-                implode(', ', $colNumbers),
+                implode(' ,', $colNumbers),
             );
 
             $indexColumns = $this->_conn->fetchAllAssociative($columnNameSql);
@@ -330,7 +316,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableDatabaseDefinition($database)
     {
@@ -338,7 +324,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      *
      * @deprecated Use {@see listSchemaNames()} instead.
      */
@@ -355,7 +341,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableSequenceDefinition($sequence)
     {
@@ -369,7 +355,7 @@ SQL,
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     protected function _getPortableTableColumnDefinition($tableColumn)
     {
@@ -468,7 +454,6 @@ SQL,
                 $length = null;
                 break;
 
-            case 'json':
             case 'text':
             case '_varchar':
             case 'varchar':
@@ -536,6 +521,7 @@ SQL,
             'precision'     => $precision,
             'scale'         => $scale,
             'fixed'         => $fixed,
+            'unsigned'      => false,
             'autoincrement' => $autoincrement,
             'comment'       => isset($tableColumn['comment']) && $tableColumn['comment'] !== ''
                 ? $tableColumn['comment']
@@ -544,7 +530,7 @@ SQL,
 
         $column = new Column($tableColumn['field'], Type::getType($type), $options);
 
-        if (! empty($tableColumn['collation'])) {
+        if (isset($tableColumn['collation']) && ! empty($tableColumn['collation'])) {
             $column->setPlatformOption('collation', $tableColumn['collation']);
         }
 
@@ -609,8 +595,6 @@ WHERE table_catalog = ?
   AND table_name != 'geometry_columns'
   AND table_name != 'spatial_ref_sys'
   AND table_type = 'BASE TABLE'
-ORDER BY
-  quote_ident(table_name)
 SQL;
 
         return $this->_conn->executeQuery($sql, [$databaseName]);
@@ -621,10 +605,10 @@ SQL;
         $sql = 'SELECT';
 
         if ($tableName === null) {
-            $sql .= ' quote_ident(c.relname) AS table_name, quote_ident(n.nspname) AS schema_name,';
+            $sql .= ' c.relname AS table_name, n.nspname AS schema_name,';
         }
 
-        $sql .= sprintf(<<<'SQL'
+        $sql .= <<<'SQL'
             a.attnum,
             quote_ident(a.attname) AS field,
             t.typname AS type,
@@ -640,7 +624,11 @@ SQL;
                 AND pg_index.indkey[0] = a.attnum
                 AND pg_index.indisprimary = 't'
             ) AS pri,
-            (%s) AS default,
+            (SELECT pg_get_expr(adbin, adrelid)
+             FROM pg_attrdef
+             WHERE c.oid = pg_attrdef.adrelid
+                AND pg_attrdef.adnum=a.attnum
+            ) AS default,
             (SELECT pg_description.description
                 FROM pg_description WHERE pg_description.objoid = c.oid AND a.attnum = pg_description.objsubid
             ) AS comment
@@ -654,8 +642,7 @@ SQL;
                 LEFT JOIN pg_depend d
                     ON d.objid = c.oid
                         AND d.deptype = 'e'
-                        AND d.classid = (SELECT oid FROM pg_class WHERE relname = 'pg_class')
-SQL, $this->_platform->getDefaultColumnValueSQLSnippet());
+SQL;
 
         $conditions = array_merge([
             'a.attnum > 0',
@@ -673,7 +660,7 @@ SQL, $this->_platform->getDefaultColumnValueSQLSnippet());
         $sql = 'SELECT';
 
         if ($tableName === null) {
-            $sql .= ' quote_ident(tc.relname) AS table_name, quote_ident(tn.nspname) AS schema_name,';
+            $sql .= ' tc.relname AS table_name, tn.nspname AS schema_name,';
         }
 
         $sql .= <<<'SQL'
@@ -697,7 +684,7 @@ SQL;
             'c.relnamespace = n.oid',
         ], $this->buildQueryConditions($tableName));
 
-        $sql .= ' WHERE ' . implode(' AND ', $conditions) . ') ORDER BY quote_ident(ic.relname)';
+        $sql .= ' WHERE ' . implode(' AND ', $conditions) . ')';
 
         return $this->_conn->executeQuery($sql);
     }
@@ -707,7 +694,7 @@ SQL;
         $sql = 'SELECT';
 
         if ($tableName === null) {
-            $sql .= ' quote_ident(tc.relname) AS table_name, quote_ident(tn.nspname) AS schema_name,';
+            $sql .= ' tc.relname AS table_name, tn.nspname AS schema_name,';
         }
 
         $sql .= <<<'SQL'
@@ -724,7 +711,7 @@ SQL;
 
         $conditions = array_merge(['n.oid = c.relnamespace'], $this->buildQueryConditions($tableName));
 
-        $sql .= ' WHERE ' . implode(' AND ', $conditions) . ") AND r.contype = 'f' ORDER BY quote_ident(r.conname)";
+        $sql .= ' WHERE ' . implode(' AND ', $conditions) . ") AND r.contype = 'f'";
 
         return $this->_conn->executeQuery($sql);
     }
@@ -735,9 +722,7 @@ SQL;
     protected function fetchTableOptionsByTable(string $databaseName, ?string $tableName = null): array
     {
         $sql = <<<'SQL'
-SELECT n.nspname AS schema_name,
-       c.relname AS table_name,
-       CASE c.relpersistence WHEN 'u' THEN true ELSE false END as unlogged,
+SELECT c.relname,
        obj_description(c.oid, 'pg_class') AS comment
 FROM pg_class c
      INNER JOIN pg_namespace n
@@ -748,12 +733,7 @@ SQL;
 
         $sql .= ' WHERE ' . implode(' AND ', $conditions);
 
-        $tableOptions = [];
-        foreach ($this->_conn->iterateAssociative($sql) as $row) {
-            $tableOptions[$this->_getPortableTableDefinition($row)] = $row;
-        }
-
-        return $tableOptions;
+        return $this->_conn->fetchAllAssociativeIndexed($sql);
     }
 
     /**
@@ -764,20 +744,22 @@ SQL;
     private function buildQueryConditions($tableName): array
     {
         $conditions = [];
+        $schemaName = null;
 
         if ($tableName !== null) {
             if (strpos($tableName, '.') !== false) {
                 [$schemaName, $tableName] = explode('.', $tableName);
-                $conditions[]             = 'n.nspname = ' . $this->_platform->quoteStringLiteral($schemaName);
-            } else {
-                $conditions[] = 'n.nspname = ANY(current_schemas(false))';
             }
 
             $identifier   = new Identifier($tableName);
             $conditions[] = 'c.relname = ' . $this->_platform->quoteStringLiteral($identifier->getName());
         }
 
-        $conditions[] = "n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')";
+        if ($schemaName !== null) {
+            $conditions[] = 'n.nspname = ' . $this->_platform->quoteStringLiteral($schemaName);
+        } else {
+            $conditions[] = "n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')";
+        }
 
         return $conditions;
     }

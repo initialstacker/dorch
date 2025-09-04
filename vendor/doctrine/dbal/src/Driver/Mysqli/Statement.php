@@ -27,7 +27,8 @@ use function str_repeat;
 
 final class Statement implements StatementInterface
 {
-    private const PARAM_TYPE_MAP = [
+    /** @var string[] */
+    private static array $paramTypeMap = [
         ParameterType::ASCII => 's',
         ParameterType::STRING => 's',
         ParameterType::BINARY => 's',
@@ -61,17 +62,10 @@ final class Statement implements StatementInterface
         $this->boundValues = array_fill(1, $paramCount, null);
     }
 
-    public function __destruct()
-    {
-        @$this->stmt->close();
-    }
-
     /**
+     * {@inheritdoc}
+     *
      * @deprecated Use {@see bindValue()} instead.
-     *
-     * {@inheritDoc}
-     *
-     * @phpstan-assert ParameterType::* $type
      */
     public function bindParam($param, &$variable, $type = ParameterType::STRING, $length = null): bool
     {
@@ -93,20 +87,18 @@ final class Statement implements StatementInterface
             );
         }
 
-        if (! isset(self::PARAM_TYPE_MAP[$type])) {
+        if (! isset(self::$paramTypeMap[$type])) {
             throw UnknownParameterType::new($type);
         }
 
         $this->boundValues[$param] =& $variable;
-        $this->types[$param - 1]   = self::PARAM_TYPE_MAP[$type];
+        $this->types[$param - 1]   = self::$paramTypeMap[$type];
 
         return true;
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * @phpstan-assert ParameterType::* $type
+     * {@inheritdoc}
      */
     public function bindValue($param, $value, $type = ParameterType::STRING): bool
     {
@@ -121,19 +113,19 @@ final class Statement implements StatementInterface
             );
         }
 
-        if (! isset(self::PARAM_TYPE_MAP[$type])) {
+        if (! isset(self::$paramTypeMap[$type])) {
             throw UnknownParameterType::new($type);
         }
 
         $this->values[$param]      = $value;
         $this->boundValues[$param] =& $this->values[$param];
-        $this->types[$param - 1]   = self::PARAM_TYPE_MAP[$type];
+        $this->types[$param - 1]   = self::$paramTypeMap[$type];
 
         return true;
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function execute($params = null): ResultInterface
     {
@@ -164,7 +156,7 @@ final class Statement implements StatementInterface
             throw StatementError::new($this->stmt);
         }
 
-        return new Result($this->stmt, $this);
+        return new Result($this->stmt);
     }
 
     /**
@@ -181,10 +173,10 @@ final class Statement implements StatementInterface
             assert(is_int($parameter));
 
             if (! isset($types[$parameter - 1])) {
-                $types[$parameter - 1] = self::PARAM_TYPE_MAP[ParameterType::STRING];
+                $types[$parameter - 1] = self::$paramTypeMap[ParameterType::STRING];
             }
 
-            if ($types[$parameter - 1] === self::PARAM_TYPE_MAP[ParameterType::LARGE_OBJECT]) {
+            if ($types[$parameter - 1] === self::$paramTypeMap[ParameterType::LARGE_OBJECT]) {
                 if (is_resource($value)) {
                     if (get_resource_type($value) !== 'stream') {
                         throw NonStreamResourceUsedAsLargeObject::new($parameter);
@@ -195,7 +187,7 @@ final class Statement implements StatementInterface
                     continue;
                 }
 
-                $types[$parameter - 1] = self::PARAM_TYPE_MAP[ParameterType::STRING];
+                $types[$parameter - 1] = self::$paramTypeMap[ParameterType::STRING];
             }
 
             $values[$parameter] = $value;

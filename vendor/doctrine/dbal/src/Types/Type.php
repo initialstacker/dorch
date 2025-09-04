@@ -100,8 +100,7 @@ abstract class Type
     /**
      * Gets the name of this type.
      *
-     * @deprecated this method will be removed in Doctrine DBAL 4.0,
-     *             use {@see TypeRegistry::lookupName()} instead.
+     * @deprecated this method will be removed in Doctrine DBAL 4.0.
      *
      * @return string
      */
@@ -136,16 +135,6 @@ abstract class Type
     public static function getType($name)
     {
         return self::getTypeRegistry()->get($name);
-    }
-
-    /**
-     * Finds a name for the given type.
-     *
-     * @throws Exception
-     */
-    public static function lookupName(self $type): string
-    {
-        return self::getTypeRegistry()->lookupName($type);
     }
 
     /**
