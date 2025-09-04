@@ -51,4 +51,4 @@ $entityManager = app(EntityManagerInterface::class);
 
 ## License
 
-This package is open-sourced software licensed under the MIT license.
+This package is open-sourced software licensed under the [MIT License](https://opensource.org/licenses/MIT).
