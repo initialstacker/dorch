@@ -289,12 +289,6 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
-        'psr/cache-implementation' => array(
-            'dev_requirement' => false,
-            'provided' => array(
-                0 => '2.0|3.0',
-            ),
-        ),
         'psr/clock' => array(
             'pretty_version' => '1.0.0',
             'version' => '1.0.0.0',
@@ -342,12 +336,6 @@
             'install_path' => __DIR__ . '/../psr/simple-cache',
             'aliases' => array(),
             'dev_requirement' => false,
-        ),
-        'psr/simple-cache-implementation' => array(
-            'dev_requirement' => false,
-            'provided' => array(
-                0 => '1.0|2.0|3.0',
-            ),
         ),
         'ramsey/collection' => array(
             'pretty_version' => '2.1.1',
@@ -523,30 +511,6 @@
             'aliases' => array(),
             'dev_requirement' => true,
         ),
-        'symfony/cache' => array(
-            'pretty_version' => 'v7.3.2',
-            'version' => '7.3.2.0',
-            'reference' => '6621a2bee5373e3e972b2ae5dbedd5ac899d8cb6',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/cache',
-            'aliases' => array(),
-            'dev_requirement' => false,
-        ),
-        'symfony/cache-contracts' => array(
-            'pretty_version' => 'v3.6.0',
-            'version' => '3.6.0.0',
-            'reference' => '5d68a57d66910405e5c0b63d6f0af941e66fc868',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/cache-contracts',
-            'aliases' => array(),
-            'dev_requirement' => false,
-        ),
-        'symfony/cache-implementation' => array(
-            'dev_requirement' => false,
-            'provided' => array(
-                0 => '1.1|2.0|3.0',
-            ),
-        ),
         'symfony/clock' => array(
             'pretty_version' => 'v7.3.0',
             'version' => '7.3.0.0',
@@ -696,15 +660,6 @@
             'provided' => array(
                 0 => '2.3|3.0',
             ),
-        ),
-        'symfony/var-exporter' => array(
-            'pretty_version' => 'v7.3.3',
-            'version' => '7.3.3.0',
-            'reference' => 'd4dfcd2a822cbedd7612eb6fbd260e46f87b7137',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/var-exporter',
-            'aliases' => array(),
-            'dev_requirement' => false,
         ),
         'theseer/tokenizer' => array(
             'pretty_version' => '1.2.3',

@@ -9,8 +9,6 @@
         "php": "^8.2",
         "illuminate/support": "^12.0",
         "doctrine/orm": "^2.14",
-        "doctrine/dbal": "^3.6|^4",
-        "symfony/cache": "^6.4.12|^7.1.5",
         "ramsey/uuid": "^4.9"
     },
     "conflict": {
