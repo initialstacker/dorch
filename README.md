@@ -25,19 +25,6 @@ Publish the configuration file:
 php artisan vendor:publish --tag=doctrine
 ```
 
-## Manual Service Provider Registration
-
-Laravel requires service providers to be registered manually by adding their class name to the providers array.
-
-Open your `bootstrap/providers.php`:
-
-```
-<?php return [
-	// Other service providers...
-	Initialstacker\Dorch\DoctrineConnector::class,
-];
-```
-
 This step is necessary because Laravel loads service providers listed in this array during application bootstrapping. Without adding your service provider class here, your package will not be connected to Laravel.
 
 ## Configuration
@@ -51,6 +38,19 @@ Configure your database and cache settings in `config/doctrine.php`. Example dri
 - `oci8` (Oracle)
 
 Set your connection according to preferred driver and database credentials.
+
+## Manual Service Provider Registration
+
+Laravel requires service providers to be registered manually by adding their class name to the providers array.
+
+Open your `bootstrap/providers.php`:
+
+```
+<?php return [
+	// Other service providers...
+	Initialstacker\Dorch\DoctrineConnector::class,
+];
+```
 
 ## Usage
 
