@@ -1,4 +1,4 @@
-# Dorch
+# Dorch - Laravel Doctrine ORM connector
 
 Laravel Doctrine ORM connector package enabling seamless integration of Doctrine ORM within Laravel applications.
 
@@ -47,8 +47,8 @@ Open your `bootstrap/providers.php`:
 
 ```
 <?php return [
-	// Other service providers...
-	Initialstacker\Dorch\DoctrineConnector::class,
+    // Other service providers...
+    Initialstacker\Dorch\DoctrineConnector::class,
 ];
 ```
 
