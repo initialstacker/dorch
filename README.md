@@ -46,7 +46,9 @@ Laravel requires service providers to be registered manually by adding their cla
 Open your `bootstrap/providers.php`:
 
 ```
-<?php return [
+<?php
+
+return [
     // Other service providers...
     Initialstacker\Dorch\DoctrineConnector::class,
 ];
