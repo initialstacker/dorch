@@ -22,7 +22,7 @@ composer require initialstacker/dorch
 Publish the configuration file:
 
 ```
-php artisan vendor:publish --tag=config --provider="Initialstacker\Dorch\ServiceProvider"
+php artisan vendor:publish --tag=doctrine
 ```
 
 ## Configuration
