@@ -1,4 +1,4 @@
-# Dorch - Laravel Doctrine ORM connector
+# Dorch
 
 Laravel Doctrine ORM connector package enabling seamless integration of Doctrine ORM within Laravel applications.
 
