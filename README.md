@@ -25,8 +25,6 @@ Publish the configuration file:
 php artisan vendor:publish --tag=doctrine
 ```
 
-This step is necessary because Laravel loads service providers listed in this array during application bootstrapping. Without adding your service provider class here, your package will not be connected to Laravel.
-
 ## Configuration
 
 Configure your database and cache settings in `config/doctrine.php`. Example drivers supported:
@@ -53,6 +51,8 @@ return [
     Initialstacker\Dorch\DoctrineConnector::class,
 ];
 ```
+
+This step is necessary because Laravel loads service providers listed in this array during application bootstrapping. Without adding your service provider class here, your package will not be connected to Laravel.
 
 ## Usage
 
