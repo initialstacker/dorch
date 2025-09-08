@@ -39,8 +39,6 @@ Set your connection according to preferred driver and database credentials.
 
 ## Manual Service Provider Registration
 
-Laravel requires service providers to be registered manually by adding their class name to the providers array.
-
 Open your `bootstrap/providers.php`:
 
 ```
